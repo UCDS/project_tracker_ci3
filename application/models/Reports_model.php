@@ -1,12 +1,38 @@
 <?php
 class Reports_model extends CI_Model{
+    private $string_to_date = functions($date){
+        $time = strtotime($date);
+        $newformat = date('Y-m-d',$time);
+
+        return $newformat;
+    };
+    private $mapping = function($input){
+        // grounded/notgrounded/ completed/ technicalsanctioned/adminsanctioned
+
+        $mapping = 1;
+        switch($input){
+            case "completed":
+                $mapping = 3;
+                break;
+            case "grounded":
+                $mapping = 2;
+                break;
+            case "notgrounded":
+                $mapping = 1;
+                break;
+            default:
+                $mapping = 1;
+        }
+        return $mapping;
+    }
     private $execution_path = array(
         "State" => array(
             "sql_path"=>array(
                 "queries"=>array(
                     "State"              
                 ),
-                "join_result_on"=>false
+                "join_result_on"=>false,
+                "filters"=>false
             )            
         ),
         "District" => array(
@@ -14,7 +40,8 @@ class Reports_model extends CI_Model{
                 "queries"=>array(
                     "District"               
                 ),
-                "join_result_on"=>false
+                "join_result_on"=>false,
+                "filters"=>false,
             )            
         ),
         "Assembly" => array(
@@ -22,6 +49,7 @@ class Reports_model extends CI_Model{
                 "queries"=>array(
                     "Assembly"               
                 ),
+                "filters"=>false,
                 "join_result_on"=>false
             )            
         ),
@@ -30,6 +58,7 @@ class Reports_model extends CI_Model{
                 "queries"=>array(
                     "Mandal"               
                 ),
+                "filters"=>false,
                 "join_result_on"=>false
             )            
         ),
@@ -38,6 +67,7 @@ class Reports_model extends CI_Model{
                 "queries"=>array(
                     "Panchayat"               
                 ),
+                "filters"=>false,
                 "join_result_on"=>false
             )            
         ),
@@ -46,6 +76,7 @@ class Reports_model extends CI_Model{
                 "queries"=>array(
                     "Habitation"                
                 ),
+                "filters"=>false,
                 "join_result_on"=>false
             )            
         ),
@@ -55,17 +86,10 @@ class Reports_model extends CI_Model{
                 "locationId"=>"district_id",
                 "totalRoads"=>"total_roads".' KM',              // project table
                 "ParameterArr"=>array(
-                    "paramName"=>"work_type",                   //Group by field
+                    "paramName"=>"work_type",                   //Group by fields
                     "paramValue"=>"work_type_length".' KM',            
                     "coveredHabitationsCount"=> NULL
                 ),
-            ),    
-            "filters"=>array(
-                "fromDate"=>"agreement_date",               // project table
-                "toDate"=>"actual_completion_date",
-                "locationType"=>"",
-                "locationId"=>"district_id",
-                "subLocation"=>"mandal"
             ),
             "sql_path"=>array(
                 "queries"=>array(
@@ -90,6 +114,7 @@ class Reports_model extends CI_Model{
                 "unConnectedHabsRoadLength"=>NULL,
                 "amountRequiredToConnect"=>"total_agreement_amount"
             ),
+            
             "sql_path"=>array(
                 "queries"=>array("getLocationWiseConnectivityStatusOverview"),
                 "join_result_on"=>false
@@ -122,6 +147,7 @@ class Reports_model extends CI_Model{
                 "completed"=>"status_type_id",
                 "notgrounded"=>"status_type_id"
             ),
+            
             "sql_path"=>array(
                 "queries"=>array("locationAndDateWiseWorksDetailsOverViewDistrictAndLowLevel"),
                 "join_result_on"=>false
@@ -159,7 +185,7 @@ class Reports_model extends CI_Model{
         "template"=>array(
             "root_table"=>"",
             "simple_columns"=>"",
-            "function_columns"=>"",
+            "functions_columns"=>"",
             "join_string"=>"",
             "group_by"=>"",
             "order_by"=>"",
@@ -169,7 +195,7 @@ class Reports_model extends CI_Model{
         "mastersData"=>array(
             "root_table"=>"",
             "simple_columns"=>"",
-            "function_columns"=>"",
+            "functions_columns"=>"",
             "join_string"=>"",
             "group_by"=>"",
             "order_by"=>"",
@@ -182,7 +208,7 @@ class Reports_model extends CI_Model{
                 "districts.district_name as locationName", 
                 "projects.district_id as locationId"
             ),
-            "function_columns"=>array(
+            "functions_columns"=>array(
                 "SUM(road_length_target) as totalRoads"
             ),
             "join_string"=>array(
@@ -191,7 +217,30 @@ class Reports_model extends CI_Model{
             "group_by"=>array("projects.district_id"),
             "order_by"=>array("district_name"),
             "where_columns"=>array("work_type_id = 1"),
-            "having_columns"=>false,           
+            "having_columns"=>false,
+            "filters"=>array(
+                "fromDate"=>array(
+                    "column_name"=>"agreement_date",
+                    "mysql_functions" => false,
+                    "functions" => $string_to_date
+                ),                               // project table
+                "toDate"=>array(
+                    "column_name"=>"actual_completion_date",
+                    "mysql_functions" => false,
+                    "functions" => $string_to_date
+                ),
+            //  "locationType"=>false,
+                "locationId"=>array(
+                    "column_name"=>"district_id",
+                    "mysql_functions" => false,
+                    "functions" => false
+                ),
+                "subLocation"=>array(
+                    "column_name"=>"mandal",
+                    "mysql_functions" => false,
+                    "functions" => false
+                ),
+            )           
         ),
         "work_type_length"=>array(
             "root_table"=>"projects",
@@ -200,12 +249,20 @@ class Reports_model extends CI_Model{
                 "work_type as paramName",
                 "'null' as coveredHabitationsCount"
             ),
-            "function_columns"=>array(
+            "functions_columns"=>array(
                 "SUM(road_length_target) as paramValue"
             ),
             "join_string"=>array(
                 "work_type"=>"projects.work_type_id = projects.work_type_id",
                 "districts"=>"projects.district_id = districts.district_id"
+            ),
+            "filters"=>array(
+                "locationId"=>array(
+                    "column_name"=>"district_id",
+                    "functions" => false,
+                    "ci_functions"=>false,
+                    "mysql_functions" => false
+                ),
             ),
             "group_by"=>array("work_type"),
             "order_by"=>array("district_name"),
@@ -225,7 +282,7 @@ class Reports_model extends CI_Model{
                 "'null' as unConnctedHabitations",
                 "'null' as unConnectedHabsRoadLength"
             ),
-            "function_columns"=>array("SUM(projects.agreement_amount) as amountRequiredToConnect"),
+            "functions_columns"=>array("SUM(projects.agreement_amount) as amountRequiredToConnect"),
             "join_string"=>array(
                 "districts"=>"projects.district_id = districts.district_id",
                 "assembly_constituency"=>"assembly_constituency.assembly_constituency_id = projects.assembly_constituency_id",
@@ -234,12 +291,44 @@ class Reports_model extends CI_Model{
             "group_by"=>array("projects.district_id"),
             "order_by"=>array("districts.district_name"),
             "where_columns"=>false,
-            "having_columns"=>false,           
+            "having_columns"=>false,
+            "filters"=>array(
+                "year"=>array(
+                    "fields"=>"agreement_date",
+                    "functions" => $string_to_date,
+                    "ci_functions"=>false,
+                    "mysql_functions" => "YEAR"
+                ),
+                "fromDate"=>array(
+                    "fields"=>"agreement_date",
+                    "functions" => $string_to_date,
+                    "ci_functions"=>false,
+                    "mysql_functions" => false
+                ),
+                "toDate"=>array(
+                    "fields"=>"actual_completion_date",
+                    "functions" => $string_to_date,
+                    "ci_functions"=>false,
+                    "mysql_functions" => false
+                ),
+                "locationType"=>array(
+                    "fields"=>"projects.mandal_id, projects.district_id, projects.assembly_constituency_id",
+                    "functions" => false,
+                    "mysql_functions" => false,
+                    "ci_functions" =>"or_where" 
+                ),
+                "reportType"=>array(
+                    "fields"=>"constituency",
+                    "functions"=>false,
+                    "mysql_functions"=>false,
+                    "ci_functions"=>false,
+                )
+            ),           
         ),
         "locationAndDateWiseWorksDetailsOverViewStateLevel"=>array(
             "root_table"=>"projects",
             "simple_columns"=>array("district_id"),
-            "function_columns"=>array(
+            "functions_columns"=>array(
                 "SUM(sanctions.admin_sanction_amount)",
                 "SUM(sanctions.admin_sanction_date)",
                 "SUM(sanctions.tech_sanction_amount)",
@@ -255,7 +344,23 @@ class Reports_model extends CI_Model{
             "group_by"=>array("projects.district_id", "project_status.status_type_id"),
             "order_by"=>array("districts.district_name"),
             "where_columns"=>false,
-            "having_columns"=>false,           
+            "having_columns"=>false,
+            "filters"=>array(
+                "fromDate"=>array(
+                    "fields"=>"agreement_date",
+                    "functions" => $string_to_date,
+                    "ci_functions"=>false,
+                    "mysql_functions" => false
+                ),
+                "toDate"=>array(
+                    "fields"=>"actual_completion_date",
+                    "functions" => $string_to_date,
+                    "ci_functions"=>false,
+                    "mysql_functions" => false
+                ),
+                //"locationType" => "state",
+                //"locationId" =>"1"
+            ),          
         ),
         "locationAndDateWiseWorksDetailsOnClick"=>array(
             "root_table"=>"projects",
@@ -272,7 +377,7 @@ class Reports_model extends CI_Model{
                 "'null' as districtName",
                 "'null' as HabitationName"
             ),
-            "function_columns"=>array(
+            "functions_columns"=>array(
                 "(CASE WHEN project_status.status_type_id = 1 then project_status.status_date else null end) as GroundatedDate",
                 "(CASE WHEN project_status.status_type_id = 2 then project_status.status_date else null end) as CompletionDate",
                 "(CASE WHEN project_status.status_type_id = 3 then project_status.status_date else null end) as Status"
@@ -285,7 +390,33 @@ class Reports_model extends CI_Model{
             "group_by"=>array("projects.district_id", "project_status.status_type_id"),
             "order_by"=>array("districts.district_name"),
             "where_columns"=>false,
-            "having_columns"=>false           
+            "having_columns"=>false,
+            "filters"=>array(
+                "fromDate"=>array(
+                    "fields"=>"agreement_date",
+                    "functions" => $string_to_date,
+                    "ci_functions"=>false,
+                    "mysql_functions" => false
+                ),
+                "toDate"=>array(
+                    "fields"=>"actual_completion_date",
+                    "functions" => $string_to_date,
+                    "ci_functions"=>false,
+                    "mysql_functions" => false
+                ),
+                "workStatus"=>array(
+                    "fields"=>"actual_completion_date",
+                    "functions" => false,
+                    "ci_functions"=>false,
+                    "mysql_functions" => false
+                ),
+                "grounded"=>array(
+                    "fields"=>"projects.work_type_id",
+                    "functions" => $mapping,
+                    "ci_functions"=>false,
+                    "mysql_functions" => "or_where"
+                )
+            )                      
         ),
         "locationAndDateWiseWorksDetailsOverViewDistrictAndLowLevel"=>array(
             "root_table"=>"projects",
@@ -293,7 +424,7 @@ class Reports_model extends CI_Model{
                 "projects.district_id as locationId",
                 "districts.district_name as locationName",
             ),
-            "function_columns"=>array(
+            "functions_columns"=>array(
                 "COUNT(*) as totalWorks",
                 "SUM(sanctions.admin_sanction_amount) as adminsanctioned",
                 "SUM(sanctions.tech_sanction_amount) as technicalsanctioned",
@@ -306,10 +437,32 @@ class Reports_model extends CI_Model{
                 "sanctions"=>"projects.project_id = sanctions.project_id",
                 "project_status"=>"project_status.project_id = projects.project_id"
             ),
-            "group_by"=>array("projects.district_id", "project_status.status_type_id"),
-            "order_by"=>array("districts.district_name"),
-            "where_columns"=>false,
-            "having_columns"=>false           
+            "group_by" => array("projects.district_id", "project_status.status_type_id"),
+            "order_by" => array("districts.district_name"),
+            "where_columns" => false,
+            "having_columns" => false,
+            "filters"=>array(
+                "fromDate"=>array(
+                    "fields" => "agreement_date",
+                    "functions" => $string_to_date,
+                    "ci_functions" => false,
+                    "mysql_functions" => false
+                ),
+                "toDate"=>array(
+                    "fields" => "actual_completion_date",
+                    "functions" => $string_to_date,
+                    "ci_functions" => false,
+                    "mysql_functions" => false
+                ),
+            //    "locationType": "state",
+            //    "locationId":"1",
+                "workStatus"=>array(
+                    "fields"=>"projects.work_type_id",
+                    "functions" => $mapping,
+                    "ci_functions" => false,
+                    "mysql_functions" => "or_where"
+                )
+            )           
         ),
         "District"=>array(
             "root_table"=>"districts",
@@ -318,7 +471,7 @@ class Reports_model extends CI_Model{
                 "district_name as district_name",
                 "state_id as state_code"
             ),
-            "function_columns"=>false,
+            "functions_columns"=>false,
             "join_string"=>false,
             "group_by"=>false,
             "order_by"=>false,
@@ -331,7 +484,7 @@ class Reports_model extends CI_Model{
                 "state_id as state_code",
                 "state as state_name"
             ),
-            "function_columns"=>false,
+            "functions_columns"=>false,
             "join_string"=>false,
             "group_by"=>false,
             "order_by"=>false,
@@ -345,7 +498,7 @@ class Reports_model extends CI_Model{
                 "assembly_constituency as assembly_name",
                 "'null' as district_code"
             ),
-            "function_columns"=>false,
+            "functions_columns"=>false,
             "join_string"=>false,
             "group_by"=>false,
             "order_by"=>false,
@@ -360,7 +513,7 @@ class Reports_model extends CI_Model{
                 "district_id as district_code", 
                 "'null' as assembly_code"
             ),
-            "function_columns"=>false,
+            "functions_columns"=>false,
             "join_string"=>false,
             "group_by"=>false,
             "order_by"=>false,
@@ -374,7 +527,7 @@ class Reports_model extends CI_Model{
                 "'null' as panchayat_name", 
                 "'null' as mandal_code"
             ),
-            "function_columns"=>false,
+            "functions_columns"=>false,
             "join_string"=>false,
             "group_by"=>false,
             "order_by"=>false,
@@ -388,7 +541,7 @@ class Reports_model extends CI_Model{
                 "'null' as habitation_name", 
                 "'null' as panchayat_code"
             ),
-            "function_columns"=>false,
+            "functions_columns"=>false,
             "join_string"=>false,
             "group_by"=>false,
             "order_by"=>false,
@@ -397,18 +550,16 @@ class Reports_model extends CI_Model{
         ),
     );
 
-    function get_report(){        
+    functions get_report(){        
         if($this->uri->segment(3)===FALSE)
             return;
         $execution_path = $this->uri->segment(3);        
         $execution_path = $this->execution_path[$execution_path];
         $results_array = array();
-        //   var_dump($execution_path['sql_path']);
+        
         foreach($execution_path['sql_path']['queries'] as $query){
             // Build Select String
-        //    echo $query;
-        //    var_dump($this->query_mapping[$query]['function_columns']);
-            $select_string = $this->query_mapping[$query]['function_columns'] ? implode(",", $this->query_mapping[$query]['function_columns']).", " : " ";
+            $select_string = $this->query_mapping[$query]['functions_columns'] ? implode(",", $this->query_mapping[$query]['functions_columns']).", " : " ";
             $select_string = $select_string.implode(",", $this->query_mapping[$query]['simple_columns']);
             $this->db->select($select_string);
             $this->db->from($this->query_mapping[$query]['root_table']);
@@ -417,12 +568,38 @@ class Reports_model extends CI_Model{
                 foreach($this->query_mapping[$query]['join_string'] as $key => $value){
                     $this->db->join($key, $value, 'left');
                 }
-            }        
-                
+            }               
             // Build Where Columns
             if($this->query_mapping[$query]['where_columns']){                
                 $this->db->where($this->query_mapping[$query]['where_columns']);
-            }                
+            }            
+            // Build filters
+            if($execution_path['sql_path']['filters']){
+                $columns = array();
+                $this->input->raw_input_stream;
+                $input_data = json_decode($this->input->raw_input_stream, true);
+                foreach($execution_path['sql_path']['filters'] as $key=>$value){
+                    if(array_key_exists($key, $input_data){
+                        $filters = explode(",",$execution_path['sql_path']['filters']);                            
+                        foreach($filters as $filter){
+                            if($input_data["functions"]){
+                                $columns[$filter] = $input_data["functions"]($input_data);
+                            }else{
+                                $columns[$filter] = $input_data;
+                            }
+                        }
+                        if($input_data["mysql_functions"]){
+                            foreach($columns as $key => $value){
+                                $this->db->$input_data["mysql_functions"]("$key", "$value");        
+                            }                            
+                        }else{
+                            foreach($columns as $key => $value){
+                                $this->db->where("$key", "$value");        
+                            }
+                        }
+                    }                    
+                }                
+            }
             // Build Group By Columns
             if($this->query_mapping[$query]['group_by'])
                 $this->db->group_by($this->query_mapping[$query]['group_by']);                   
@@ -431,8 +608,7 @@ class Reports_model extends CI_Model{
                 $this->db->order_by(implode(',', $this->query_mapping[$query]['order_by']));
             // Build Having Columns
             if($this->query_mapping[$query]['having_columns'])
-                $this->db->order_by($this->query_mapping[$query]['having_columns']);
-        //    echo "After Having String";
+                $this->db->order_by($this->query_mapping[$query]['having_columns']);       
             $result = $this->db->get();
             $results_array[$query] = $result->result();       
         }
@@ -442,7 +618,6 @@ class Reports_model extends CI_Model{
             // Write the method, move this block to library
             $link = $execution_path['sql_path']['join_result_on']['default'][1];
             $mapping = $execution_path['sql_path']['join_result_on']['default'][0];
-            var_dump($mapping);
             for($i=sizeof($execution_path['sql_path']['queries'])-2; $i>=0; $i--){
                 $parent_results_array = $results_array[$execution_path['sql_path']['queries'][$i]];                                 
                 $child_results_array = $results_array[$execution_path['sql_path']['queries'][$i+1]];
